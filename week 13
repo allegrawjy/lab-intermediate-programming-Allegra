@@ -1,0 +1,124 @@
+import sqlite3
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import ttk
+
+# Koneksi ke database (membuat database jika belum ada)
+conn = sqlite3.connect('address_book.db')
+cursor = conn.cursor()
+
+# Membuat tabel jika belum ada
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nama TEXT NOT NULL,
+    alamat TEXT NOT NULL,
+    no_telp TEXT NOT NULL,
+    email TEXT NOT NULL
+)
+''')
+
+# Fungsi untuk memasukkan data ke tabel
+def insert_contacts(nama, alamat, no_telp, email):
+    cursor.execute('''
+    INSERT INTO contacts (nama, alamat, no_telp, email)
+    VALUES (?, ?, ?, ?)
+    ''', (nama, alamat, no_telp, email))
+    conn.commit()
+    messagebox.showinfo("Info", "Contact has been added successfully")
+    display_contacts()
+
+# Fungsi untuk menampilkan semua data
+def fetch_contacts():
+    cursor.execute('SELECT * FROM contacts')
+    return cursor.fetchall()
+
+# Fungsi untuk mengupdate data berdasarkan ID
+def update_contact(contact_id, nama, alamat, no_telp, email):
+    cursor.execute('''
+    UPDATE contacts
+    SET nama = ?, alamat = ?, no_telp = ?, email = ?
+    WHERE id = ?
+    ''', (nama, alamat, no_telp, email, contact_id))
+    conn.commit()
+    messagebox.showinfo("Info", "Contact has been updated successfully")
+    display_contacts()
+
+# Fungsi untuk menghapus data berdasarkan ID
+def delete_contact(contact_id):
+    cursor.execute('DELETE FROM contacts WHERE id = ?', (contact_id,))
+    conn.commit()
+    messagebox.showinfo("Info", "Contact has been deleted successfully")
+    display_contacts()
+
+# Fungsi untuk menampilkan data di Listbox
+def display_contacts():
+    for item in contact_listbox.get_children():
+        contact_listbox.delete(item)
+    contacts = fetch_contacts()
+    for contact in contacts:
+        contact_listbox.insert('', 'end', values=(contact[0], contact[1], contact[2], contact[3], contact[4]))
+
+# Fungsi untuk mengambil data dari entry
+def get_entry_data():
+    return entry_name.get(), entry_address.get(), entry_phone.get(), entry_email.get()
+
+# Fungsi untuk menambahkan data dari entry
+def add_contact():
+    nama, alamat, no_telp, email = get_entry_data()
+    insert_contacts(nama, alamat, no_telp, email)
+
+# Fungsi untuk mengupdate data dari entry
+def edit_contact():
+    selected_item = contact_listbox.selection()[0]
+    contact_id = contact_listbox.item(selected_item, 'values')[0]
+    nama, alamat, no_telp, email = get_entry_data()
+    update_contact(contact_id, nama, alamat, no_telp, email)
+
+# Fungsi untuk menghapus data dari entry
+def remove_contact():
+    selected_item = contact_listbox.selection()[0]
+    contact_id = contact_listbox.item(selected_item, 'values')[0]
+    delete_contact(contact_id)
+
+# Membuat window tkinter
+window = tk.Tk()
+window.title("Address Book")
+
+# Label dan Entry untuk form input
+tk.Label(window, text="Nama").grid(row=0, column=0)
+tk.Label(window, text="Alamat").grid(row=1, column=0)
+tk.Label(window, text="No Telp").grid(row=2, column=0)
+tk.Label(window, text="Email").grid(row=3, column=0)
+
+entry_name = tk.Entry(window)
+entry_address = tk.Entry(window)
+entry_phone = tk.Entry(window)
+entry_email = tk.Entry(window)
+
+entry_name.grid(row=0, column=1)
+entry_address.grid(row=1, column=1)
+entry_phone.grid(row=2, column=1)
+entry_email.grid(row=3, column=1)
+
+# Tombol untuk operasi CRUD
+tk.Button(window, text="Add Contact", command=add_contact).grid(row=4, column=0)
+tk.Button(window, text="Edit Contact", command=edit_contact).grid(row=4, column=1)
+tk.Button(window, text="Remove Contact", command=remove_contact).grid(row=4, column=2)
+
+# Listbox untuk menampilkan data
+columns = ('ID', 'Nama', 'Alamat', 'No Telp', 'Email')
+contact_listbox = ttk.Treeview(window, columns=columns, show='headings')
+for col in columns:
+    contact_listbox.heading(col, text=col)
+
+contact_listbox.grid(row=5, column=0, columnspan=3)
+
+# Menampilkan data saat aplikasi dijalankan
+display_contacts()
+
+# Menjalankan aplikasi
+window.mainloop()
+
+# Menutup koneksi saat aplikasi ditutup
+conn.close()
